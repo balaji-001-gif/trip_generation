@@ -168,8 +168,6 @@ function lookup_trip_from_input(rawText, frm, dialog) {
 			const t = r.message;
 
 			// Auto-populate the Gate Entry Log fields
-			// Setting the trip field triggers the `trip` change handler
-			// which will auto-fetch and display invoice details.
 			frm.set_value("trip", t.name);
 			frm.set_value("vehicle_expected", t.vehicle);
 
@@ -179,6 +177,17 @@ function lookup_trip_from_input(rawText, frm, dialog) {
 			} else if (t.status === "Dispatched") {
 				frm.set_value("scan_type", "Gate Out");
 			}
+
+			// Display invoices directly from the lookup response
+			// (no need for a second API call via fetch_and_display_trip_invoices)
+			display_trip_invoices(frm, {
+				name: t.name,
+				vehicle: t.vehicle,
+				trip_type: t.trip_type,
+				status: t.status,
+				total_invoices: t.total_invoices,
+				invoices: t.invoices,
+			});
 
 			dialog.hide();
 
@@ -197,6 +206,10 @@ function lookup_trip_from_input(rawText, frm, dialog) {
 // ────────────────────────────────────────────
 
 function fetch_and_display_trip_invoices(frm) {
+	// Guard: don't re-fetch while a lookup is already in progress
+	if (frm._fetching_trip) return;
+	frm._fetching_trip = true;
+
 	frappe.call({
 		method: "frappe.client.get",
 		args: {
@@ -204,6 +217,7 @@ function fetch_and_display_trip_invoices(frm) {
 			name: frm.doc.trip,
 		},
 		callback(r) {
+			frm._fetching_trip = false;
 			if (r.exc || !r.message) return;
 			const trip = r.message;
 
@@ -211,22 +225,13 @@ function fetch_and_display_trip_invoices(frm) {
 				frm.set_value("vehicle_expected", trip.vehicle);
 			}
 
-			// Construct display data from the invoices table
-			const invoiceData = (trip.invoices || []).map(function (inv) {
-				return {
-					sales_invoice: inv.sales_invoice,
-					customer: inv.customer,
-					grand_total: inv.grand_total,
-				};
-			});
-
 			display_trip_invoices(frm, {
 				name: trip.name,
 				vehicle: trip.vehicle,
 				trip_type: trip.trip_type,
 				status: trip.status,
 				total_invoices: trip.total_invoices,
-				invoices: invoiceData,
+				invoices: trip.invoices || [],
 			});
 		},
 	});
