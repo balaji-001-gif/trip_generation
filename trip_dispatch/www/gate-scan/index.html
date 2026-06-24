@@ -75,6 +75,17 @@ function lookupTrip(rawText) {
 			return;
 		}
 		const t = res.message;
+
+		// If a Gate Entry Log already exists for this trip, redirect to it
+		if (t.gate_entry_log_name) {
+			document.getElementById("result").innerHTML =
+				'A Gate Entry Log already exists for this trip. ' +
+				'<a href="/app/gate-entry-log/' + t.gate_entry_log_name + '">View it here</a>.';
+			document.getElementById("result").style.color = "blue";
+			document.getElementById("trip-details").style.display = "none";
+			return;
+		}
+
 		document.getElementById("td-name").innerText = t.name;
 		document.getElementById("td-vehicle").innerText = t.vehicle;
 		document.getElementById("td-status").innerText = t.status;

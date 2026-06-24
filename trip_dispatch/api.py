@@ -136,6 +136,9 @@ def lookup_trip(trip, code):
 	"""Called from the /gate-scan page after a QR is scanned (or a code is
 	pasted in manually). Requires a gate role - this is desk-adjacent data
 	(vehicle assignment, customer, invoice totals), not public information.
+
+	Also checks whether a Gate Entry Log already exists for this trip, so the
+	UI can navigate to it instead of showing a duplicate creation dialog.
 	"""
 	_ensure_gate_role()
 	trip_doc = frappe.get_doc("Trip", trip)
@@ -144,6 +147,15 @@ def lookup_trip(trip, code):
 
 	vehicle_status = frappe.db.get_value("Vehicle", trip_doc.vehicle, "status") or ""
 
+	# Check if a Gate Entry Log already exists for this trip
+	# (any docstatus — Draft, Submitted, or Cancelled)
+	gate_entry_log_name = frappe.db.get_value(
+		"Gate Entry Log",
+		{"trip": trip_doc.name},
+		"name",
+		order_by="creation asc",
+	)
+
 	return {
 		"name": trip_doc.name,
 		"vehicle": trip_doc.vehicle,
@@ -151,6 +163,7 @@ def lookup_trip(trip, code):
 		"trip_type": trip_doc.trip_type,
 		"status": trip_doc.status,
 		"total_invoices": trip_doc.total_invoices,
+		"gate_entry_log_name": gate_entry_log_name or "",
 		"invoices": [
 			{
 				"sales_invoice": row.sales_invoice,

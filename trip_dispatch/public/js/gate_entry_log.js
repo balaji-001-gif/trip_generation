@@ -169,6 +169,18 @@ function lookup_trip_from_input(rawText, frm, dialog) {
 			}
 			const t = r.message;
 
+			// If a Gate Entry Log already exists for this trip, navigate to it
+			// instead of showing a duplicate creation dialog
+			if (t.gate_entry_log_name) {
+				dialog.hide();
+				frappe.show_alert({
+					message: __("A Gate Entry Log already exists for this trip. Navigating to it."),
+					indicator: "blue",
+				});
+				frappe.set_route("Form", "Gate Entry Log", t.gate_entry_log_name);
+				return;
+			}
+
 			// Close the scan dialog and open the confirmation dialog
 			dialog.hide();
 			show_scan_confirmation(frm, t, parsed.code);
