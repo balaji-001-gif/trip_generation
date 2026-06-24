@@ -6,10 +6,7 @@ frappe.ui.form.on("Gate Entry Log", {
 			show_scan_qr_dialog(frm);
 		}, __("Gate Scan"));
 
-		// If the trip is already set, show invoices
-		if (frm.doc.trip) {
-			fetch_and_display_trip_invoices(frm);
-		}
+		// No longer fetch invoices here — trip(frm) handles it on initial load
 	},
 
 	// When the trip field changes (user selects a different trip)
@@ -21,29 +18,35 @@ frappe.ui.form.on("Gate Entry Log", {
 			return;
 		}
 
-		// First check if a Gate Entry Log already exists for this trip
-		frappe.call({
-			method: "frappe.client.get_value",
-			args: {
-				doctype: "Gate Entry Log",
-				filters: { trip: frm.doc.trip },
-				fieldname: "name",
-			},
-			callback(r) {
-				if (r.message && r.message.name) {
-					// A log already exists — warn and navigate to it
-					frappe.show_alert({
-						message: __("A Gate Entry Log already exists for this trip. Navigating to it."),
-						indicator: "blue",
-					});
-					frappe.set_route("Form", "Gate Entry Log", r.message.name);
-					return;
-				}
+		// Only check for existing logs when creating a NEW record.
+		// For existing records being reloaded, just show invoices.
+		if (frm.is_new()) {
+			frappe.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "Gate Entry Log",
+					filters: { trip: frm.doc.trip },
+					fieldname: "name",
+				},
+				callback(r) {
+					if (r.message && r.message.name) {
+						// A log already exists — warn and navigate to it
+						frappe.show_alert({
+							message: __("A Gate Entry Log already exists for this trip. Navigating to it."),
+							indicator: "blue",
+						});
+						frappe.set_route("Form", "Gate Entry Log", r.message.name);
+						return;
+					}
 
-				// No existing log — show invoices normally
-				fetch_and_display_trip_invoices(frm);
-			},
-		});
+					// No existing log — show invoices normally
+					fetch_and_display_trip_invoices(frm);
+				},
+			});
+		} else {
+			// Existing record being reloaded — just show invoices
+			fetch_and_display_trip_invoices(frm);
+		}
 	},
 });
 
