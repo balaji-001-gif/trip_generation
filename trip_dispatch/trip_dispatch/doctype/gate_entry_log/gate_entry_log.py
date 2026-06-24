@@ -4,7 +4,7 @@ from frappe.model.document import Document
 
 
 class GateEntryLog(Document):
-	def on_update(self):
+	def validate(self):
 		# This is the audit trail security and management rely on when a
 		# mismatch happens. If it can be silently edited after creation,
 		# it stops being evidence. Allow creation only.
