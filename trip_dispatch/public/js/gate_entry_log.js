@@ -169,37 +169,158 @@ function lookup_trip_from_input(rawText, frm, dialog) {
 			}
 			const t = r.message;
 
-			// Auto-populate the Gate Entry Log fields
-			frm.set_value("trip", t.name);
-			frm.set_value("vehicle_expected", t.vehicle);
+			// Close the scan dialog and open the confirmation dialog
+			dialog.hide();
+			show_scan_confirmation(frm, t, parsed.code);
+		},
+	});
+}
 
-			// Auto-select scan type based on trip status
-			if (t.status === "In Transit") {
-				frm.set_value("scan_type", "Gate In");
-			} else if (t.status === "Dispatched") {
-				frm.set_value("scan_type", "Gate Out");
+
+// ────────────────────────────────────────────
+//  Scan Confirmation Dialog
+// ────────────────────────────────────────────
+
+function show_scan_confirmation(frm, tripData, tripCode) {
+	const defaultScanType = tripData.status === "In Transit" ? "Gate In" : "Gate Out";
+
+	const dialog = new frappe.ui.Dialog({
+		title: __("Confirm Gate Scan"),
+		fields: [
+			{
+				fieldname: "trip_info",
+				fieldtype: "HTML",
+				label: __("Trip Details"),
+			},
+			{
+				fieldname: "vehicle_entered",
+				fieldtype: "Data",
+				label: __("Vehicle Entered"),
+				reqd: 1,
+				description: __("Enter the vehicle number seen at the gate"),
+			},
+			{
+				fieldname: "scan_type",
+				fieldtype: "Select",
+				label: __("Scan Type"),
+				options: "Gate Out\nGate In",
+				default: defaultScanType,
+				reqd: 1,
+			},
+		],
+		primary_action_label: __("Confirm Scan"),
+		primary_action(values) {
+			const vehicleEntered = (values.vehicle_entered || "").trim().toUpperCase();
+			if (!vehicleEntered) {
+				frappe.msgprint(__("Enter the vehicle number seen at the gate."));
+				return;
 			}
 
-			// Display invoices directly from the lookup response
-			// (no need for a second API call via fetch_and_display_trip_invoices)
-			display_trip_invoices(frm, {
-				name: t.name,
-				vehicle: t.vehicle,
-				trip_type: t.trip_type,
-				status: t.status,
-				total_invoices: t.total_invoices,
-				invoices: t.invoices,
-			});
+			dialog.set_primary_action(__("Recording..."), null);
 
-			dialog.hide();
+			frappe.call({
+				method: "trip_dispatch.api.record_gate_scan",
+				args: {
+					trip: tripData.name,
+					code: tripCode,
+					scan_type: values.scan_type,
+					vehicle_entered: vehicleEntered,
+				},
+				callback(r) {
+					if (r.exc) {
+						dialog.set_primary_action(__("Confirm Scan"), dialog.primary_action);
+						return;
+					}
+					const result = r.message;
 
-			// Show confirmation
-			frappe.show_alert({
-				message: __("Trip {0} loaded — Vehicle: {1}, Status: {2}", [t.name, t.vehicle, t.status]),
-				indicator: "green",
+					dialog.hide();
+
+					if (result.match) {
+						frappe.show_alert({
+							message: __("✓ MATCH — {0} recorded. Trip status: {1}", [values.scan_type, result.status]),
+							indicator: "green",
+						});
+					} else {
+						frappe.show_alert({
+							message: __("✗ MISMATCH — Expected {0}, got {1}. Trip flagged.", [result.expected, result.entered]),
+							indicator: "red",
+						});
+					}
+
+					// Refresh the form so the Gate Entry Log field shows new data
+					frm.refresh();
+				},
 			});
 		},
 	});
+
+	// Render trip info in the HTML field
+	dialog.once("shown", function () {
+		const infoEl = dialog.get_field("trip_info").$wrapper;
+
+		const invoiceRows = (tripData.invoices || [])
+			.map(function (inv, i) {
+				const formatted = frappe.format(inv.grand_total, { fieldtype: "Currency" });
+				return `<tr>
+					<td style="padding:3px 6px;font-size:9pt;">${i + 1}</td>
+					<td style="padding:3px 6px;font-size:9pt;">${frappe.utils.escape_html(inv.sales_invoice)}</td>
+					<td style="padding:3px 6px;font-size:9pt;">${frappe.utils.escape_html(inv.customer || "-")}</td>
+					<td style="padding:3px 6px;font-size:9pt;text-align:right;">${formatted}</td>
+				</tr>`;
+			})
+			.join("");
+
+		infoEl.html(`
+			<div style="margin-bottom:8px;">
+				<table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:6px;">
+					<tr>
+						<td style="padding:4px 8px;font-size:8pt;color:#666;width:30%;">${__("Trip")}</td>
+						<td style="padding:4px 8px;font-size:9pt;font-weight:600;">${frappe.utils.escape_html(tripData.name)}</td>
+					</tr>
+					<tr>
+						<td style="padding:4px 8px;font-size:8pt;color:#666;">${__("Vehicle")}</td>
+						<td style="padding:4px 8px;font-size:9pt;font-weight:600;">${frappe.utils.escape_html(tripData.vehicle)}</td>
+					</tr>
+					<tr>
+						<td style="padding:4px 8px;font-size:8pt;color:#666;">${__("Status")}</td>
+						<td style="padding:4px 8px;font-size:9pt;">${frappe.utils.escape_html(tripData.status)}</td>
+					</tr>
+					<tr>
+						<td style="padding:4px 8px;font-size:8pt;color:#666;">${__("Trip Type")}</td>
+						<td style="padding:4px 8px;font-size:9pt;">${frappe.utils.escape_html(tripData.trip_type)}</td>
+					</tr>
+					<tr>
+						<td style="padding:4px 8px;font-size:8pt;color:#666;">${__("Invoice Count")}</td>
+						<td style="padding:4px 8px;font-size:9pt;">${tripData.total_invoices || 0}</td>
+					</tr>
+				</table>
+			</div>
+			<div style="font-size:8pt;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">
+				${__("Invoices on this Trip")}
+			</div>
+			<table style="width:100%;border-collapse:collapse;">
+				<thead>
+					<tr style="background:#f3f4f6;">
+						<th style="padding:3px 6px;font-size:7.5pt;text-transform:uppercase;color:#666;text-align:left;">#</th>
+						<th style="padding:3px 6px;font-size:7.5pt;text-transform:uppercase;color:#666;text-align:left;">${__("Invoice")}</th>
+						<th style="padding:3px 6px;font-size:7.5pt;text-transform:uppercase;color:#666;text-align:left;">${__("Customer")}</th>
+						<th style="padding:3px 6px;font-size:7.5pt;text-transform:uppercase;color:#666;text-align:right;">${__("Amount")}</th>
+					</tr>
+				</thead>
+				<tbody>${invoiceRows}</tbody>
+			</table>
+		`);
+	});
+
+	dialog.show();
+
+	// Focus the vehicle entered field
+	setTimeout(function () {
+		const vehicleField = dialog.get_field("vehicle_entered");
+		if (vehicleField && vehicleField.$input) {
+			vehicleField.$input.focus();
+		}
+	}, 300);
 }
 
 
