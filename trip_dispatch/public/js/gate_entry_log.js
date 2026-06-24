@@ -14,13 +14,36 @@ frappe.ui.form.on("Gate Entry Log", {
 
 	// When the trip field changes (user selects a different trip)
 	trip(frm) {
-		if (frm.doc.trip) {
-			fetch_and_display_trip_invoices(frm);
-		} else {
+		if (!frm.doc.trip) {
 			// Clear the child table when trip is removed
 			frm.clear_table("invoices");
 			frm.refresh_field("invoices");
+			return;
 		}
+
+		// First check if a Gate Entry Log already exists for this trip
+		frappe.call({
+			method: "frappe.client.get_value",
+			args: {
+				doctype: "Gate Entry Log",
+				filters: { trip: frm.doc.trip },
+				fieldname: "name",
+			},
+			callback(r) {
+				if (r.message && r.message.name) {
+					// A log already exists — warn and navigate to it
+					frappe.show_alert({
+						message: __("A Gate Entry Log already exists for this trip. Navigating to it."),
+						indicator: "blue",
+					});
+					frappe.set_route("Form", "Gate Entry Log", r.message.name);
+					return;
+				}
+
+				// No existing log — show invoices normally
+				fetch_and_display_trip_invoices(frm);
+			},
+		});
 	},
 });
 
