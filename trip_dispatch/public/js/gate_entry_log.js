@@ -88,7 +88,7 @@ function show_scan_qr_dialog(frm) {
 	});
 
 	// Stop the camera when the dialog is closed
-	dialog.onhide = function () {
+	dialog.on_hide = function () {
 		if (html5QrCode) {
 			try {
 				html5QrCode.stop().catch(function () {});
