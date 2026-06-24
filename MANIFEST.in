@@ -1,0 +1,17 @@
+include MANIFEST.in
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include trip_dispatch *.css
+recursive-include trip_dispatch *.csv
+recursive-include trip_dispatch *.html
+recursive-include trip_dispatch *.ico
+recursive-include trip_dispatch *.js
+recursive-include trip_dispatch *.json
+recursive-include trip_dispatch *.md
+recursive-include trip_dispatch *.png
+recursive-include trip_dispatch *.py
+recursive-include trip_dispatch *.svg
+recursive-include trip_dispatch *.txt
+recursive-exclude trip_dispatch *.pyc

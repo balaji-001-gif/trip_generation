@@ -1,0 +1,242 @@
+{
+ "actions": [],
+ "autoname": "format:TRIP-{YYYY}-{#####}",
+ "creation": "2026-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "trip_date",
+  "vehicle",
+  "driver",
+  "trip_type",
+  "column_break_1",
+  "status",
+  "trip_code",
+  "section_break_invoices",
+  "invoices",
+  "column_break_totals",
+  "total_invoices",
+  "total_amount",
+  "section_break_qr",
+  "qr_code",
+  "column_break_gate",
+  "gate_out_time",
+  "gate_out_by",
+  "gate_in_time",
+  "gate_in_by",
+  "section_break_remarks",
+  "remarks",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "trip_date",
+   "fieldtype": "Date",
+   "label": "Trip Date",
+   "reqd": 1,
+   "default": "Today",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "vehicle",
+   "fieldtype": "Link",
+   "label": "Vehicle",
+   "options": "Vehicle",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "driver",
+   "fieldtype": "Data",
+   "label": "Driver",
+   "fetch_from": "vehicle.default_driver"
+  },
+  {
+   "fieldname": "trip_type",
+   "fieldtype": "Select",
+   "label": "Trip Type",
+   "options": "Outward\nReturnable",
+   "default": "Outward",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Outward closes as soon as Gate-Out matches. Returnable stays In Transit until a matching Gate-In is recorded - use this for returnable delivery / empties tracking."
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nDispatched\nIn Transit\nFlagged\nCompleted\nCancelled",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "trip_code",
+   "fieldtype": "Data",
+   "label": "Trip Code",
+   "hidden": 1,
+   "read_only": 1,
+   "unique": 1,
+   "no_copy": 1,
+   "description": "Random token embedded in the QR. Set once on submit, never edited."
+  },
+  {
+   "fieldname": "section_break_invoices",
+   "fieldtype": "Section Break",
+   "label": "Invoices on this vehicle"
+  },
+  {
+   "fieldname": "invoices",
+   "fieldtype": "Table",
+   "label": "Invoices",
+   "options": "Trip Invoice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_invoices",
+   "fieldtype": "Int",
+   "label": "Total Invoices",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_qr",
+   "fieldtype": "Section Break",
+   "label": "Gate QR"
+  },
+  {
+   "fieldname": "qr_code",
+   "fieldtype": "Attach Image",
+   "label": "QR Code",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "column_break_gate",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gate_out_time",
+   "fieldtype": "Datetime",
+   "label": "Gate Out Time",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "gate_out_by",
+   "fieldtype": "Link",
+   "label": "Gate Out By",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "gate_in_time",
+   "fieldtype": "Datetime",
+   "label": "Gate In Time",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "gate_in_by",
+   "fieldtype": "Link",
+   "label": "Gate In By",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "section_break_remarks",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Trip",
+   "no_copy": 1,
+   "read_only": 1,
+   "print_hide": 1
+  }
+ ],
+ "index_web_views": 0,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Trip Dispatch",
+ "name": "Trip",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Trip Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Gate Security"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

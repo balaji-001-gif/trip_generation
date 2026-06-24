@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+*.so
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Bench / Frappe
+sites/
+node_modules/
+.bench/
+yarn.lock
+package-lock.json
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local

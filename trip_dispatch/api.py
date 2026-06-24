@@ -1,0 +1,166 @@
+import frappe
+from frappe import _
+from frappe.utils import now_datetime
+
+GATE_ROLES = {"Gate Security", "Trip Manager", "System Manager"}
+
+
+def _ensure_gate_role():
+	if not (GATE_ROLES & set(frappe.get_roles())):
+		frappe.throw(_("Not permitted to perform gate scans."), frappe.PermissionError)
+
+
+@frappe.whitelist()
+def get_open_trips(vehicle=None):
+	"""Used by the Sales Invoice 'Add to Trip' dialog to list draft trips
+	that more invoices can still be batched onto."""
+	filters = {"docstatus": 0}
+	if vehicle:
+		filters["vehicle"] = vehicle
+	return frappe.get_all(
+		"Trip",
+		filters=filters,
+		fields=["name", "vehicle", "trip_date", "total_invoices"],
+		order_by="creation desc",
+		limit_page_length=20,
+	)
+
+
+@frappe.whitelist()
+def add_invoice_to_trip(sales_invoice, trip=None, vehicle=None, trip_type="Outward"):
+	"""Append a Sales Invoice to an existing draft Trip, or start a new one.
+
+	This is intentionally a separate step from Sales Invoice submission -
+	one vehicle usually carries several invoices, so trip creation has to
+	be a deliberate batching action, not an automatic on_submit side
+	effect that would create one trip per invoice.
+	"""
+	si = frappe.get_doc("Sales Invoice", sales_invoice)
+	if si.docstatus != 1:
+		frappe.throw(_("Only submitted Sales Invoices can be added to a trip."))
+
+	if trip:
+		trip_doc = frappe.get_doc("Trip", trip)
+		if trip_doc.docstatus != 0:
+			frappe.throw(_("Can only add invoices to a Trip that is still in Draft."))
+	else:
+		if not vehicle:
+			frappe.throw(_("Select a vehicle to start a new trip."))
+		trip_doc = frappe.new_doc("Trip")
+		trip_doc.vehicle = vehicle
+		trip_doc.trip_type = trip_type
+		trip_doc.trip_date = frappe.utils.today()
+
+	trip_doc.append("invoices", {
+		"sales_invoice": si.name,
+		"customer": si.customer,
+		"grand_total": si.grand_total,
+		"posting_date": si.posting_date,
+	})
+	trip_doc.save()
+	return trip_doc.name
+
+
+@frappe.whitelist()
+def lookup_trip(trip, code):
+	"""Called from the /gate-scan page after a QR is scanned (or a code is
+	pasted in manually). Requires a gate role - this is desk-adjacent data
+	(vehicle assignment, customer, invoice totals), not public information.
+	"""
+	_ensure_gate_role()
+	trip_doc = frappe.get_doc("Trip", trip)
+	if trip_doc.trip_code != code:
+		frappe.throw(_("Invalid or expired trip code."), frappe.PermissionError)
+
+	return {
+		"name": trip_doc.name,
+		"vehicle": trip_doc.vehicle,
+		"trip_type": trip_doc.trip_type,
+		"status": trip_doc.status,
+		"total_invoices": trip_doc.total_invoices,
+		"invoices": [
+			{
+				"sales_invoice": row.sales_invoice,
+				"customer": row.customer,
+				"grand_total": row.grand_total,
+			}
+			for row in trip_doc.invoices
+		],
+	}
+
+
+@frappe.whitelist()
+def record_gate_scan(trip, code, scan_type, vehicle_entered):
+	"""The actual gate check. Validates the trip_code, enforces the state
+	machine (Dispatched -> Gate Out -> In Transit -> Gate In -> Completed,
+	with Flagged as the terminal error state), logs every attempt - match
+	or mismatch - to Gate Entry Log, and only releases the vehicle back to
+	Available once the relevant leg is confirmed.
+	"""
+	_ensure_gate_role()
+	trip_doc = frappe.get_doc("Trip", trip)
+
+	if trip_doc.trip_code != code:
+		frappe.throw(_("Invalid or expired trip code."), frappe.PermissionError)
+
+	if trip_doc.docstatus != 1:
+		frappe.throw(_("Trip is not dispatched yet."))
+
+	if scan_type == "Gate Out":
+		if trip_doc.status != "Dispatched":
+			frappe.throw(
+				_("Gate-out already recorded, or trip is not in a dispatchable state. Current status: {0}")
+				.format(trip_doc.status)
+			)
+	elif scan_type == "Gate In":
+		if trip_doc.trip_type != "Returnable":
+			frappe.throw(_("This trip is not marked Returnable. Gate-in does not apply."))
+		if trip_doc.status != "In Transit":
+			frappe.throw(
+				_("Trip must clear Gate Out before Gate In can be recorded. Current status: {0}")
+				.format(trip_doc.status)
+			)
+	else:
+		frappe.throw(_("Unknown scan type: {0}").format(scan_type))
+
+	vehicle_entered = (vehicle_entered or "").strip().upper()
+	expected = (trip_doc.vehicle or "").strip().upper()
+	is_match = vehicle_entered == expected
+
+	log = frappe.new_doc("Gate Entry Log")
+	log.trip = trip_doc.name
+	log.scan_type = scan_type
+	log.vehicle_expected = expected
+	log.vehicle_entered = vehicle_entered
+	log.match_status = "Match" if is_match else "Mismatch"
+	log.scanned_by = frappe.session.user
+	log.scan_time = now_datetime()
+	log.insert(ignore_permissions=True)
+
+	if scan_type == "Gate Out":
+		trip_doc.db_set("gate_out_time", log.scan_time)
+		trip_doc.db_set("gate_out_by", frappe.session.user)
+		if not is_match:
+			trip_doc.db_set("status", "Flagged")
+		elif trip_doc.trip_type == "Returnable":
+			trip_doc.db_set("status", "In Transit")
+		else:
+			# Outward trips have no return leg to check, so the trip
+			# closes here and the vehicle is free to be assigned again.
+			trip_doc.db_set("status", "Completed")
+			frappe.db.set_value("Vehicle", trip_doc.vehicle, "status", "Available")
+	else:
+		trip_doc.db_set("gate_in_time", log.scan_time)
+		trip_doc.db_set("gate_in_by", frappe.session.user)
+		if is_match:
+			trip_doc.db_set("status", "Completed")
+			frappe.db.set_value("Vehicle", trip_doc.vehicle, "status", "Available")
+		else:
+			trip_doc.db_set("status", "Flagged")
+
+	return {
+		"match": is_match,
+		"expected": expected,
+		"entered": vehicle_entered,
+		"status": trip_doc.status,
+	}

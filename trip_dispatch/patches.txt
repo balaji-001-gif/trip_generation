@@ -1,0 +1,2 @@
+# Patches added by this app go here, one dotted-path per line.
+# See: https://docs.frappe.io/framework/user/en/database-migrations

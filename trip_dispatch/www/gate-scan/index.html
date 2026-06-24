@@ -1,0 +1,139 @@
+{% extends "templates/web.html" %}
+
+{% block page_content %}
+<div style="max-width:480px;margin:0 auto;font-family:sans-serif;">
+	<h2>Gate scan</h2>
+
+	<div id="reader" style="width:100%;"></div>
+	<p style="text-align:center;color:#888;">or enter manually</p>
+	<input id="manual-code" type="text" placeholder="Paste gate-scan URL"
+		style="width:100%;padding:8px;margin-bottom:8px;box-sizing:border-box;">
+	<button id="lookup-btn" style="width:100%;padding:10px;">Look up trip</button>
+
+	<div id="trip-details" style="display:none;margin-top:20px;border:1px solid #ddd;padding:16px;border-radius:8px;">
+		<p><strong>Trip:</strong> <span id="td-name"></span></p>
+		<p><strong>Expected vehicle:</strong> <span id="td-vehicle"></span></p>
+		<p><strong>Status:</strong> <span id="td-status"></span></p>
+		<p><strong>Invoices:</strong></p>
+		<ul id="td-invoices"></ul>
+
+		<label>Vehicle number seen at gate</label>
+		<input id="vehicle-entered" type="text"
+			style="width:100%;padding:8px;margin-bottom:8px;text-transform:uppercase;box-sizing:border-box;">
+
+		<select id="scan-type" style="width:100%;padding:8px;margin-bottom:8px;">
+			<option value="Gate Out">Gate Out</option>
+			<option value="Gate In">Gate In (returnable)</option>
+		</select>
+
+		<button id="confirm-btn" style="width:100%;padding:10px;background:#1d9e75;color:#fff;border:none;border-radius:4px;">
+			Confirm scan
+		</button>
+	</div>
+
+	<div id="result" style="margin-top:16px;font-weight:bold;"></div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+let currentTrip = null;
+let currentCode = null;
+
+function parseTripCode(text) {
+	try {
+		const url = new URL(text);
+		return { trip: url.searchParams.get("trip"), code: url.searchParams.get("code") };
+	} catch (e) {
+		return null;
+	}
+}
+
+function callMethod(method, args) {
+	return fetch(`/api/method/${method}`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-Frappe-CSRF-Token": "{{ csrf_token }}",
+		},
+		body: JSON.stringify(args),
+	}).then(r => r.json());
+}
+
+function lookupTrip(rawText) {
+	const parsed = parseTripCode(rawText);
+	if (!parsed || !parsed.trip || !parsed.code) {
+		document.getElementById("result").innerText = "Could not read a trip code from that input.";
+		return;
+	}
+	currentTrip = parsed.trip;
+	currentCode = parsed.code;
+
+	callMethod("trip_dispatch.api.lookup_trip", { trip: currentTrip, code: currentCode }).then(res => {
+		if (res.exc) {
+			document.getElementById("result").innerText = "Lookup failed - invalid or expired code.";
+			document.getElementById("result").style.color = "red";
+			return;
+		}
+		const t = res.message;
+		document.getElementById("td-name").innerText = t.name;
+		document.getElementById("td-vehicle").innerText = t.vehicle;
+		document.getElementById("td-status").innerText = t.status;
+		const list = document.getElementById("td-invoices");
+		list.innerHTML = "";
+		t.invoices.forEach(inv => {
+			const li = document.createElement("li");
+			li.innerText = `${inv.sales_invoice} - ${inv.customer} - ${inv.grand_total}`;
+			list.appendChild(li);
+		});
+		document.getElementById("scan-type").value = t.status === "In Transit" ? "Gate In" : "Gate Out";
+		document.getElementById("trip-details").style.display = "block";
+		document.getElementById("result").innerText = "";
+	});
+}
+
+document.getElementById("lookup-btn").addEventListener("click", () => {
+	lookupTrip(document.getElementById("manual-code").value.trim());
+});
+
+document.getElementById("confirm-btn").addEventListener("click", () => {
+	const vehicleEntered = document.getElementById("vehicle-entered").value.trim();
+	const scanType = document.getElementById("scan-type").value;
+	if (!vehicleEntered) {
+		document.getElementById("result").innerText = "Enter the vehicle number seen at the gate.";
+		return;
+	}
+	callMethod("trip_dispatch.api.record_gate_scan", {
+		trip: currentTrip,
+		code: currentCode,
+		scan_type: scanType,
+		vehicle_entered: vehicleEntered,
+	}).then(res => {
+		const resultDiv = document.getElementById("result");
+		if (res.exc) {
+			resultDiv.innerText = "Scan failed - see the Trip in Desk for details.";
+			resultDiv.style.color = "red";
+			return;
+		}
+		const r = res.message;
+		resultDiv.innerText = r.match
+			? `MATCH - ${scanType} recorded. Trip status: ${r.status}`
+			: `MISMATCH - expected ${r.expected}, got ${r.entered}. Trip flagged.`;
+		resultDiv.style.color = r.match ? "green" : "red";
+	});
+});
+
+function onScanSuccess(decodedText) {
+	document.getElementById("manual-code").value = decodedText;
+	lookupTrip(decodedText);
+}
+
+const html5QrCode = new Html5Qrcode("reader");
+html5QrCode.start(
+	{ facingMode: "environment" },
+	{ fps: 10, qrbox: 220 },
+	onScanSuccess
+).catch(() => {
+	document.getElementById("reader").innerText = "Camera not available - use manual entry below.";
+});
+</script>
+{% endblock %}
