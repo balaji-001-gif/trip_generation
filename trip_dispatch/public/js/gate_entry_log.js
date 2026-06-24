@@ -42,7 +42,7 @@ function load_html5_qrcode(callback) {
 	_html5QrLoading = true;
 
 	const script = document.createElement("script");
-	script.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+	script.src = "/assets/trip_dispatch/js/lib/html5-qrcode.min.js";
 	script.onload = function () {
 		_html5QrLoaded = true;
 		_html5QrLoading = false;
