@@ -27,6 +27,30 @@ def get_open_trips(vehicle=None):
 
 
 @frappe.whitelist()
+def _check_invoice_not_on_any_trip(sales_invoice, exclude_trip=None):
+	"""Raise if this Sales Invoice is already linked to any submitted Trip
+	(including Completed). An invoice should only ever ship once."""
+	clashing = frappe.db.sql(
+		"""
+		select t.name, t.status
+		from `tabTrip` t
+		inner join `tabTrip Invoice` ti on ti.parent = t.name
+		where ti.sales_invoice = %s
+		  and t.name != %s
+		  and t.docstatus = 1
+		""",
+		(sales_invoice, exclude_trip or ""),
+		as_dict=True,
+	)
+	if clashing:
+		frappe.throw(
+			_("Sales Invoice {0} is already on Trip {1} (Status: {2}).").format(
+				sales_invoice, clashing[0].name, clashing[0].status
+			)
+		)
+
+
+@frappe.whitelist()
 def add_invoice_to_trip(sales_invoice, trip=None, vehicle=None, trip_type="Outward"):
 	"""Append a Sales Invoice to an existing draft Trip, or start a new one.
 
@@ -38,6 +62,9 @@ def add_invoice_to_trip(sales_invoice, trip=None, vehicle=None, trip_type="Outwa
 	si = frappe.get_doc("Sales Invoice", sales_invoice)
 	if si.docstatus != 1:
 		frappe.throw(_("Only submitted Sales Invoices can be added to a trip."))
+
+	# An invoice should only ever be on ONE trip
+	_check_invoice_not_on_any_trip(sales_invoice, exclude_trip=trip)
 
 	if trip:
 		trip_doc = frappe.get_doc("Trip", trip)
@@ -103,6 +130,9 @@ def add_invoices_to_trip(sales_invoices, trip=None, vehicle=None, trip_type="Out
 		if inv_name in seen_invoices:
 			skipped.append(inv_name)
 			continue
+
+		# An invoice should only ever be on ONE trip
+		_check_invoice_not_on_any_trip(inv_name, exclude_trip=trip)
 
 		si = frappe.get_doc("Sales Invoice", inv_name)
 		if si.docstatus != 1:

@@ -23,26 +23,25 @@ class Trip(Document):
 				)
 			seen.add(row.sales_invoice)
 
-			# An invoice should not ride on two open trips at the same
-			# time - that would mean two vehicles both being treated as
-			# the source of truth for the same delivery.
+			# An invoice should only ever be on ONE trip - once it's on
+			# any submitted trip (including Completed), it cannot be
+			# added to another. This prevents duplicate billing/dispatch.
 			clashing = frappe.db.sql(
 				"""
-				select t.name
+				select t.name, t.status
 				from `tabTrip` t
 				inner join `tabTrip Invoice` ti on ti.parent = t.name
 				where ti.sales_invoice = %s
 				  and t.name != %s
 				  and t.docstatus = 1
-				  and t.status not in ('Completed', 'Cancelled')
 				""",
 				(row.sales_invoice, self.name or ""),
 				as_dict=True,
 			)
 			if clashing:
 				frappe.throw(
-					_("Sales Invoice {0} is already on open Trip {1}.").format(
-						row.sales_invoice, clashing[0].name
+					_("Sales Invoice {0} is already on Trip {1} (Status: {2}).").format(
+						row.sales_invoice, clashing[0].name, clashing[0].status
 					)
 				)
 
