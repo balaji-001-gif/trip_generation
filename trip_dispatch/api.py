@@ -153,6 +153,7 @@ def lookup_trip(trip, code):
 				"sales_invoice": row.sales_invoice,
 				"customer": row.customer,
 				"grand_total": row.grand_total,
+				"posting_date": row.posting_date,
 			}
 			for row in trip_doc.invoices
 		],
