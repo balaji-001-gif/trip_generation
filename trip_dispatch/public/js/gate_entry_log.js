@@ -1,35 +1,23 @@
 frappe.ui.form.on("Gate Entry Log", {
-	onload: function (frm) {
-		// Prevent duplicate event binding
-		if (frm.gel_initialized) return;
-		frm.gel_initialized = true;
-
-		// --- Scan QR button in the toolbar ---
-		frm.add_custom_button(__("Scan QR"), function () {
+	refresh(frm) {
+		// Add Scan QR button — Frappe clears custom buttons between
+		// onload and refresh, so always add in refresh.
+		frm.add_custom_button(__("Scan QR"), () => {
 			show_scan_qr_dialog(frm);
 		}, __("Gate Scan"));
 
-		// --- If the trip is already set (e.g. viewing an existing record), show invoices ---
+		// If the trip is already set, show invoices
 		if (frm.doc.trip) {
 			fetch_and_display_trip_invoices(frm);
 		}
 	},
 
 	// When the trip field changes (user selects a different trip)
-	trip: function (frm) {
+	trip(frm) {
 		if (frm.doc.trip) {
 			fetch_and_display_trip_invoices(frm);
 		} else {
 			clear_trip_invoices_section(frm);
-		}
-	},
-
-	refresh: function (frm) {
-		// Re-add the button on refresh (Frappe may clear custom buttons)
-		if (!frm.is_new()) {
-			frm.add_custom_button(__("Scan QR"), function () {
-				show_scan_qr_dialog(frm);
-			}, __("Gate Scan"));
 		}
 	},
 });
