@@ -184,8 +184,6 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 				.format(trip_doc.status)
 			)
 	elif scan_type == "Gate In":
-		if trip_doc.trip_type != "Returnable":
-			frappe.throw(_("This trip is not marked Returnable. Gate-in does not apply."))
 		if trip_doc.status != "In Transit":
 			frappe.throw(
 				_("Trip must clear Gate Out before Gate In can be recorded. Current status: {0}")
@@ -213,18 +211,15 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 		trip_doc.db_set("gate_out_by", frappe.session.user)
 		if not is_match:
 			trip_doc.db_set("status", "Flagged")
-		elif trip_doc.trip_type == "Returnable":
-			trip_doc.db_set("status", "In Transit")
 		else:
-			# Outward trips have no return leg to check, so the trip
-			# closes here and the vehicle is free to be assigned again.
-			trip_doc.db_set("status", "Completed")
-			frappe.db.set_value("Vehicle", trip_doc.vehicle, "status", "Available")
+			# Vehicle goes out — stays On Trip until Gate In confirms return
+			trip_doc.db_set("status", "In Transit")
 	else:
 		trip_doc.db_set("gate_in_time", log.scan_time)
 		trip_doc.db_set("gate_in_by", frappe.session.user)
 		if is_match:
 			trip_doc.db_set("status", "Completed")
+			# Vehicle is back — only now it becomes available
 			frappe.db.set_value("Vehicle", trip_doc.vehicle, "status", "Available")
 		else:
 			trip_doc.db_set("status", "Flagged")
