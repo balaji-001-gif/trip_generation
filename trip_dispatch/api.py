@@ -169,7 +169,12 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 	machine (Dispatched -> Gate Out -> In Transit -> Gate In -> Completed,
 	with Flagged as the terminal error state), logs every attempt - match
 	or mismatch - to Gate Entry Log, and only releases the vehicle back to
-	Available once the relevant leg is confirmed.
+	Available once the return (Gate In) is confirmed.
+
+	Key design: A single Gate Entry Log records both scans.
+	- Gate Out: Creates the log as Draft with gate_out_datetime
+	- Gate In:  Finds the existing Draft log and updates it with
+	            gate_in_datetime, then submits it.
 	"""
 	_ensure_gate_role()
 	trip_doc = frappe.get_doc("Trip", trip)
@@ -180,65 +185,94 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 	if trip_doc.docstatus != 1:
 		frappe.throw(_("Trip is not dispatched yet."))
 
+	vehicle_entered = (vehicle_entered or "").strip().upper()
+	expected = (trip_doc.vehicle or "").strip().upper()
+	is_match = vehicle_entered == expected
+	now = now_datetime()
+
 	if scan_type == "Gate Out":
 		if trip_doc.status != "Dispatched":
 			frappe.throw(
 				_("Gate-out already recorded, or trip is not in a dispatchable state. Current status: {0}")
 				.format(trip_doc.status)
 			)
+
+		vehicle_status = frappe.db.get_value("Vehicle", trip_doc.vehicle, "status") or ""
+
+		log = frappe.new_doc("Gate Entry Log")
+		log.trip = trip_doc.name
+		log.scan_type = "Gate Out"
+		log.trip_status = trip_doc.status
+		log.vehicle_expected = expected
+		log.vehicle_entered = vehicle_entered
+		log.vehicle_status = vehicle_status
+		log.match_status = "Match" if is_match else "Mismatch"
+		log.scanned_by = frappe.session.user
+		log.gate_out_datetime = now
+		log.insert(ignore_permissions=True)
+
+		# Keep as Draft — Gate In will update and submit it
+		trip_doc.db_set("gate_out_time", now)
+		trip_doc.db_set("gate_out_by", frappe.session.user)
+		if not is_match:
+			trip_doc.db_set("status", "Flagged")
+		else:
+			trip_doc.db_set("status", "In Transit")
+
+		return {
+			"match": is_match,
+			"expected": expected,
+			"entered": vehicle_entered,
+			"status": trip_doc.status,
+			"gate_entry_log_name": log.name,
+			"scan_type": "Gate Out",
+		}
+
 	elif scan_type == "Gate In":
 		if trip_doc.status != "In Transit":
 			frappe.throw(
 				_("Trip must clear Gate Out before Gate In can be recorded. Current status: {0}")
 				.format(trip_doc.status)
 			)
-	else:
-		frappe.throw(_("Unknown scan type: {0}").format(scan_type))
 
-	vehicle_entered = (vehicle_entered or "").strip().upper()
-	expected = (trip_doc.vehicle or "").strip().upper()
-	is_match = vehicle_entered == expected
+		# Find the existing Draft Gate Out log for this trip
+		log_name = frappe.db.get_value(
+			"Gate Entry Log",
+			{"trip": trip_doc.name, "scan_type": "Gate Out", "docstatus": 0},
+			"name",
+		)
+		if not log_name:
+			frappe.throw(_("No pending Gate Out record found for this trip. Scan Gate Out first."))
 
-	# Determine the vehicle's current status
-	vehicle_status = frappe.db.get_value("Vehicle", trip_doc.vehicle, "status") or ""
+		log = frappe.get_doc("Gate Entry Log", log_name)
+		log.gate_in_datetime = now
+		log.vehicle_entered = vehicle_entered
+		log.match_status = "Match" if is_match else "Mismatch"
+		log.scanned_by = frappe.session.user
+		log.vehicle_status = frappe.db.get_value("Vehicle", trip_doc.vehicle, "status") or ""
+		log.trip_status = trip_doc.status
+		log.save(ignore_permissions=True)
 
-	log = frappe.new_doc("Gate Entry Log")
-	log.trip = trip_doc.name
-	log.scan_type = scan_type
-	log.vehicle_expected = expected
-	log.vehicle_entered = vehicle_entered
-	log.vehicle_status = vehicle_status
-	log.match_status = "Match" if is_match else "Mismatch"
-	log.scanned_by = frappe.session.user
-	log.scan_time = now_datetime()
-	log.insert(ignore_permissions=True)
+		# Submit the log now that both scans are recorded
+		frappe.flags.ignore_permissions = True
+		log.submit()
 
-	# Auto-submit so the record shows as Submitted (no Save button)
-	frappe.flags.ignore_permissions = True
-	log.submit()
-
-	if scan_type == "Gate Out":
-		trip_doc.db_set("gate_out_time", log.scan_time)
-		trip_doc.db_set("gate_out_by", frappe.session.user)
-		if not is_match:
-			trip_doc.db_set("status", "Flagged")
-		else:
-			# Vehicle goes out — stays On Trip until Gate In confirms return
-			trip_doc.db_set("status", "In Transit")
-	else:
-		trip_doc.db_set("gate_in_time", log.scan_time)
+		trip_doc.db_set("gate_in_time", now)
 		trip_doc.db_set("gate_in_by", frappe.session.user)
 		if is_match:
 			trip_doc.db_set("status", "Completed")
-			# Vehicle is back — only now it becomes available
 			frappe.db.set_value("Vehicle", trip_doc.vehicle, "status", "Available")
 		else:
 			trip_doc.db_set("status", "Flagged")
 
-	return {
-		"match": is_match,
-		"expected": expected,
-		"entered": vehicle_entered,
-		"status": trip_doc.status,
-		"gate_entry_log_name": log.name,
-	}
+		return {
+			"match": is_match,
+			"expected": expected,
+			"entered": vehicle_entered,
+			"status": trip_doc.status,
+			"gate_entry_log_name": log.name,
+			"scan_type": "Gate In",
+		}
+
+	else:
+		frappe.throw(_("Unknown scan type: {0}").format(scan_type))

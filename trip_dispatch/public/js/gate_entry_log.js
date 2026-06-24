@@ -236,19 +236,24 @@ function show_scan_confirmation(frm, tripData, tripCode) {
 
 						dialog.hide();
 
-						if (result.match) {
-							frappe.show_alert({
-								message: __("✓ MATCH — {0} recorded. Trip status: {1}", [values.scan_type, result.status]),
-								indicator: "green",
-							});
-						} else {
+						if (!result.match) {
 							frappe.show_alert({
 								message: __("✗ MISMATCH — Expected {0}, got {1}. Trip flagged.", [result.expected, result.entered]),
 								indicator: "red",
 							});
+						} else if (result.scan_type === "Gate Out") {
+							frappe.show_alert({
+								message: __("✓ Gate Out recorded — Draft created. Return scan needed to complete."),
+								indicator: "orange",
+							});
+						} else {
+							frappe.show_alert({
+								message: __("✓ Gate In recorded — Trip completed. Vehicle is now Available."),
+								indicator: "green",
+							});
 						}
 
-						// Navigate to the newly created Gate Entry Log
+						// Navigate to the Gate Entry Log
 						frappe.set_route("Form", "Gate Entry Log", result.gate_entry_log_name);
 					},
 				});
