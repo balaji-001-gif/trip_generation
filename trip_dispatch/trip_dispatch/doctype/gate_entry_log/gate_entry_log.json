@@ -110,7 +110,7 @@
  "modified_by": "Administrator",
  "module": "Trip Dispatch",
  "name": "Gate Entry Log",
- "naming_rule": "By Naming Series",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
