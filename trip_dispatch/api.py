@@ -28,8 +28,8 @@ def get_open_trips(vehicle=None):
 
 @frappe.whitelist()
 def _check_invoice_not_on_any_trip(sales_invoice, exclude_trip=None):
-	"""Raise if this Sales Invoice is already linked to any submitted Trip
-	(including Completed). An invoice should only ever ship once."""
+	"""Raise if this Sales Invoice is already linked to any active submitted
+	Trip (including Completed). Cancelled trips release invoices for reuse."""
 	clashing = frappe.db.sql(
 		"""
 		select t.name, t.status
@@ -38,6 +38,7 @@ def _check_invoice_not_on_any_trip(sales_invoice, exclude_trip=None):
 		where ti.sales_invoice = %s
 		  and t.name != %s
 		  and t.docstatus = 1
+		  and t.status != 'Cancelled'
 		""",
 		(sales_invoice, exclude_trip or ""),
 		as_dict=True,

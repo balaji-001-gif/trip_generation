@@ -24,8 +24,9 @@ class Trip(Document):
 			seen.add(row.sales_invoice)
 
 			# An invoice should only ever be on ONE trip - once it's on
-			# any submitted trip (including Completed), it cannot be
-			# added to another. This prevents duplicate billing/dispatch.
+			# any active submitted trip (including Completed), it cannot
+			# be added to another. Cancelled trips still release the
+			# invoice for re-dispatch.
 			clashing = frappe.db.sql(
 				"""
 				select t.name, t.status
@@ -34,6 +35,7 @@ class Trip(Document):
 				where ti.sales_invoice = %s
 				  and t.name != %s
 				  and t.docstatus = 1
+				  and t.status != 'Cancelled'
 				""",
 				(row.sales_invoice, self.name or ""),
 				as_dict=True,
