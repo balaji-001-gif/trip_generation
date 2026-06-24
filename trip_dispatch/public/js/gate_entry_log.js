@@ -388,7 +388,16 @@ function display_trip_invoices(frm, tripData) {
 		return;
 	}
 
-	// Populate the child table instead of a dashboard section
+	// Check if invoices are already saved in the DB (e.g., from the API)
+	// Don't re-add them — that would create unsaved rows and block Submit
+	var savedInvoices = (frm.doc.invoices || []).filter(function (inv) {
+		return inv.name && !inv.__islocal;
+	});
+	if (savedInvoices.length > 0) {
+		return;
+	}
+
+	// Populate the child table
 	frm.clear_table("invoices");
 	(tripData.invoices || []).forEach(function (inv) {
 		var child = frm.add_child("invoices");

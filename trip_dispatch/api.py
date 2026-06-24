@@ -209,6 +209,17 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 		log.match_status = "Match" if is_match else "Mismatch"
 		log.scanned_by = frappe.session.user
 		log.gate_out_datetime = now
+
+		# Copy invoices from the Trip so they're saved in the DB
+		# (avoids JS having to add unsaved child rows on form load)
+		for inv in trip_doc.invoices:
+			log.append("invoices", {
+				"sales_invoice": inv.sales_invoice,
+				"customer": inv.customer,
+				"grand_total": inv.grand_total,
+				"posting_date": inv.posting_date,
+			})
+
 		log.insert(ignore_permissions=True)
 
 		# Keep as Draft — Gate In will update and submit it
