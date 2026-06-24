@@ -62,6 +62,76 @@ def add_invoice_to_trip(sales_invoice, trip=None, vehicle=None, trip_type="Outwa
 
 
 @frappe.whitelist()
+def add_invoices_to_trip(sales_invoices, trip=None, vehicle=None, trip_type="Outward"):
+	"""Batch-add multiple Sales Invoices to a single trip in one call.
+
+	Used by the Sales Invoice list-view bulk action. Accepts a JSON list
+	of invoice names, validates all are submitted, and appends them to
+	an existing draft Trip or creates a new one.
+	"""
+	import json
+
+	if isinstance(sales_invoices, str):
+		sales_invoices = json.loads(sales_invoices)
+
+	if not sales_invoices or not isinstance(sales_invoices, list):
+		frappe.throw(_("Provide a list of Sales Invoices to add."))
+
+	# Resolve the trip doc once, upfront
+	if trip:
+		trip_doc = frappe.get_doc("Trip", trip)
+		if trip_doc.docstatus != 0:
+			frappe.throw(_("Can only add invoices to a Trip that is still in Draft."))
+	else:
+		if not vehicle:
+			frappe.throw(_("Select a vehicle to start a new trip."))
+		trip_doc = frappe.new_doc("Trip")
+		trip_doc.vehicle = vehicle
+		trip_doc.trip_type = trip_type
+		trip_doc.trip_date = frappe.utils.today()
+
+	# Track already-seen invoices on this trip to avoid client-side duplicates
+	seen_invoices = {row.sales_invoice for row in trip_doc.get("invoices", [])}
+	skipped = []
+	added_count = 0
+
+	for inv_name in sales_invoices:
+		inv_name = inv_name.strip()
+		if not inv_name:
+			continue
+
+		if inv_name in seen_invoices:
+			skipped.append(inv_name)
+			continue
+
+		si = frappe.get_doc("Sales Invoice", inv_name)
+		if si.docstatus != 1:
+			frappe.throw(
+				_("Sales Invoice {0} is not submitted. Only submitted invoices can be added to a trip.").format(inv_name)
+			)
+
+		trip_doc.append("invoices", {
+			"sales_invoice": si.name,
+			"customer": si.customer,
+			"grand_total": si.grand_total,
+			"posting_date": si.posting_date,
+		})
+		seen_invoices.add(inv_name)
+		added_count += 1
+
+	if added_count == 0:
+		frappe.throw(_("All selected invoices are already on this trip. No new invoices were added."))
+
+	trip_doc.save()
+
+	return {
+		"trip_name": trip_doc.name,
+		"added_count": added_count,
+		"skipped_count": len(skipped),
+	}
+
+
+@frappe.whitelist()
 def lookup_trip(trip, code):
 	"""Called from the /gate-scan page after a QR is scanned (or a code is
 	pasted in manually). Requires a gate role - this is desk-adjacent data

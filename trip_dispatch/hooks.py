@@ -11,9 +11,14 @@ app_license = "MIT"
 # Trip will fail at runtime instead of at install time.
 required_apps = ["erpnext"]
 
-# Adds the "Add to Trip" button to submitted Sales Invoices.
+# Adds the "Add to Trip" button to submitted Sales Invoices (form view).
 doctype_js = {
 	"Sales Invoice": "public/js/sales_invoice.js"
+}
+
+# Adds a bulk "Add to Trip" action to the Sales Invoice list view.
+doctype_list_js = {
+	"Sales Invoice": "public/js/sales_invoice_list.js"
 }
 
 after_install = "trip_dispatch.install.after_install"
