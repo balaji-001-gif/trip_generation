@@ -24,37 +24,125 @@ frappe.ui.form.on("Gate Entry Log", {
 
 
 // ────────────────────────────────────────────
-//  QR / Manual Scan Dialog
+//  QR Scan Dialog — Camera + Manual Fallback
 // ────────────────────────────────────────────
 
+let _html5QrLoaded = false;
+let _html5QrLoading = false;
+const _html5QrCallbacks = [];
+
+function load_html5_qrcode(callback) {
+	if (typeof Html5Qrcode !== "undefined") {
+		_html5QrLoaded = true;
+		callback();
+		return;
+	}
+	_html5QrCallbacks.push(callback);
+	if (_html5QrLoading) return;
+	_html5QrLoading = true;
+
+	const script = document.createElement("script");
+	script.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+	script.onload = function () {
+		_html5QrLoaded = true;
+		_html5QrLoading = false;
+		_html5QrCallbacks.forEach(function (cb) { cb(); });
+		_html5QrCallbacks.length = 0;
+	};
+	script.onerror = function () {
+		_html5QrLoading = false;
+		console.error("Failed to load html5-qrcode library");
+	};
+	document.head.appendChild(script);
+}
+
+
 function show_scan_qr_dialog(frm) {
+	let html5QrCode = null;
+	let scannerStarted = false;
+
 	const dialog = new frappe.ui.Dialog({
 		title: __("Scan QR Code"),
 		fields: [
 			{
+				fieldname: "camera_view",
+				fieldtype: "HTML",
+				label: __("Camera"),
+			},
+			{
 				fieldname: "manual_input",
 				fieldtype: "Data",
 				label: __("Or paste gate-scan URL"),
-				description: __("Paste the full URL from the QR code or dispatch sheet"),
+				description: __("Paste the URL from the QR code or dispatch sheet"),
 			},
 		],
 		primary_action_label: __("Look Up"),
 		primary_action(values) {
 			const input = values.manual_input;
 			if (!input) {
-				frappe.msgprint(__("Scan a QR or paste the gate-scan URL."));
+				frappe.msgprint(__("Scan a QR code or paste the gate-scan URL."));
 				return;
 			}
 			lookup_trip_from_input(input, frm, dialog);
 		},
 	});
 
+	// Stop the camera when the dialog is closed
+	dialog.onhide = function () {
+		if (html5QrCode) {
+			try {
+				html5QrCode.stop().catch(function () {});
+			} catch (e) {}
+			html5QrCode = null;
+		}
+		scannerStarted = false;
+	};
+
 	dialog.show();
 
-	// Focus the manual input field for convenience
+	// Render the camera viewfinder placeholder
+	const cameraEl = dialog.get_field("camera_view").$wrapper;
+	cameraEl.html(
+		'<div id="gate-entry-qr-reader" style="width:100%;max-width:360px;margin:0 auto;border-radius:8px;overflow:hidden;"></div>'
+	);
+
+	// Dynamically load the html5-qrcode library and start the camera
 	setTimeout(function () {
-		dialog.get_field("manual_input").$input.focus();
-	}, 300);
+		load_html5_qrcode(function () {
+			if (scannerStarted) return;
+			const readerElement = document.getElementById("gate-entry-qr-reader");
+			if (!readerElement) return;
+
+			try {
+				html5QrCode = new Html5Qrcode("gate-entry-qr-reader");
+				html5QrCode
+					.start(
+						{ facingMode: "environment" },
+						{ fps: 10, qrbox: 220 },
+						function (decodedText) {
+							// Auto-detect — look up the trip immediately
+							lookup_trip_from_input(decodedText, frm, dialog);
+						}
+					)
+					.then(function () {
+						scannerStarted = true;
+					})
+					.catch(function () {
+						cameraEl.html(
+							'<div style="padding:12px;text-align:center;color:#888;background:#f9f9f9;border-radius:8px;">' +
+								__("Camera not available — use the manual input below.") +
+							"</div>"
+						);
+					});
+			} catch (e) {
+				cameraEl.html(
+					'<div style="padding:12px;text-align:center;color:#888;">' +
+						__("Camera not available — use the manual input below.") +
+					"</div>"
+				);
+			}
+		});
+	}, 500);
 }
 
 
