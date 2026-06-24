@@ -16,7 +16,9 @@
   "vehicle_entered",
   "column_break_2",
   "scanned_by",
-  "remarks"
+  "remarks",
+  "invoices_section",
+  "invoices"
  ],
  "fields": [
   {
@@ -88,11 +90,23 @@
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
+  },
+  {
+   "fieldname": "invoices_section",
+   "fieldtype": "Section Break",
+   "label": "Trip Invoices"
+  },
+  {
+   "fieldname": "invoices",
+   "fieldtype": "Table",
+   "label": "Invoices",
+   "options": "Gate Entry Log Invoice",
+   "read_only": 1
   }
  ],
  "index_web_views": 0,
  "links": [],
- "modified": "2026-01-01 00:00:00.000000",
+ "modified": "2026-06-24 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Trip Dispatch",
  "name": "Gate Entry Log",

@@ -17,7 +17,9 @@ frappe.ui.form.on("Gate Entry Log", {
 		if (frm.doc.trip) {
 			fetch_and_display_trip_invoices(frm);
 		} else {
-			clear_trip_invoices_section(frm);
+			// Clear the child table when trip is removed
+			frm.clear_table("invoices");
+			frm.refresh_field("invoices");
 		}
 	},
 });
@@ -239,81 +241,20 @@ function fetch_and_display_trip_invoices(frm) {
 
 
 function display_trip_invoices(frm, tripData) {
-	// Remove any existing invoice display section
-	clear_trip_invoices_section(frm);
-
 	if (!tripData || !tripData.invoices || tripData.invoices.length === 0) {
 		return;
 	}
 
-	const rows = tripData.invoices
-		.map(function (inv, i) {
-			const formatted = frappe.format(inv.grand_total, { fieldtype: "Currency" });
-			return `<tr>
-				<td style="padding:4px 6px;border-bottom:1px solid #f0f0f0;">${i + 1}</td>
-				<td style="padding:4px 6px;border-bottom:1px solid #f0f0f0;"><b>${frappe.utils.escape_html(inv.sales_invoice)}</b></td>
-				<td style="padding:4px 6px;border-bottom:1px solid #f0f0f0;">${frappe.utils.escape_html(inv.customer || "-")}</td>
-				<td style="padding:4px 6px;border-bottom:1px solid #f0f0f0;text-align:right;">${formatted}</td>
-			</tr>`;
-		})
-		.join("");
-
-	const totalFormatted = frappe.format(tripData.total_invoices, { fieldtype: "Int" });
-
-	const html = `<div class="frappe-control" style="margin-top:8px;">
-		<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-			<span style="font-size:8pt;color:#888;text-transform:uppercase;letter-spacing:0.04em;">
-				${__("Trip Invoices")}
-			</span>
-			<span style="font-size:8pt;color:#666;">
-				${__("Vehicle")}: <b>${frappe.utils.escape_html(tripData.vehicle)}</b>
-			</span>
-			<span style="font-size:8pt;color:#666;">
-				${__("Status")}: <b>${frappe.utils.escape_html(tripData.status)}</b>
-			</span>
-			<span style="font-size:8pt;color:#666;">
-				${__("Type")}: <b>${frappe.utils.escape_html(tripData.trip_type)}</b>
-			</span>
-		</div>
-		<table style="width:100%;border-collapse:collapse;font-size:9pt;">
-			<thead>
-				<tr style="background:#f9fafb;">
-					<th style="padding:4px 6px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:7.5pt;text-transform:uppercase;color:#666;">#</th>
-					<th style="padding:4px 6px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:7.5pt;text-transform:uppercase;color:#666;">${__("Invoice")}</th>
-					<th style="padding:4px 6px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:7.5pt;text-transform:uppercase;color:#666;">${__("Customer")}</th>
-					<th style="padding:4px 6px;border-bottom:2px solid #e5e7eb;text-align:right;font-size:7.5pt;text-transform:uppercase;color:#666;">${__("Amount")}</th>
-				</tr>
-			</thead>
-			<tbody>${rows}</tbody>
-			<tfoot>
-				<tr>
-					<td colspan="3" style="padding:4px 6px;border-top:2px solid #1a1a1a;font-weight:700;">
-						${__("Total ({0} invoices)", [totalFormatted])}
-					</td>
-					<td style="padding:4px 6px;border-top:2px solid #1a1a1a;font-weight:700;text-align:right;">
-						${frappe.format(tripData.invoices.reduce(function (sum, inv) { return sum + flt(inv.grand_total); }, 0), { fieldtype: "Currency" })}
-					</td>
-				</tr>
-			</tfoot>
-		</table>
-	</div>`;
-
-	frm.dashboard.add_section(html, __("Trip Invoices"));
-}
-
-
-function clear_trip_invoices_section(frm) {
-	// Remove previously added invoice sections from the dashboard
-	frm.dashboard.sections = (frm.dashboard.sections || []).filter(function (s) {
-		return s.label !== __("Trip Invoices");
+	// Populate the child table instead of a dashboard section
+	frm.clear_table("invoices");
+	(tripData.invoices || []).forEach(function (inv) {
+		var child = frm.add_child("invoices");
+		child.sales_invoice = inv.sales_invoice || "";
+		child.customer = inv.customer || "";
+		child.grand_total = inv.grand_total || 0;
+		child.posting_date = inv.posting_date || "";
 	});
-	// Re-render the dashboard
-	if (frm.dashboard.sections.length === 0) {
-		frm.dashboard.hide();
-	} else {
-		frm.dashboard.show();
-	}
-	frm.dashboard.render();
+	frm.refresh_field("invoices");
 }
 
 
