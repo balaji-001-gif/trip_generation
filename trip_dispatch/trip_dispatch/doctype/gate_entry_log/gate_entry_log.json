@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "hash",
+ "autoname": "GEL-.YYYY.-.#####",
  "creation": "2026-01-01 00:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -110,7 +110,7 @@
  "modified_by": "Administrator",
  "module": "Trip Dispatch",
  "name": "Gate Entry Log",
- "naming_rule": "Random",
+ "naming_rule": "By Naming Series",
  "owner": "Administrator",
  "permissions": [
   {
