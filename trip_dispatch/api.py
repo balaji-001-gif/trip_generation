@@ -142,9 +142,12 @@ def lookup_trip(trip, code):
 	if trip_doc.trip_code != code:
 		frappe.throw(_("Invalid or expired trip code."), frappe.PermissionError)
 
+	vehicle_status = frappe.db.get_value("Vehicle", trip_doc.vehicle, "status") or ""
+
 	return {
 		"name": trip_doc.name,
 		"vehicle": trip_doc.vehicle,
+		"vehicle_status": vehicle_status,
 		"trip_type": trip_doc.trip_type,
 		"status": trip_doc.status,
 		"total_invoices": trip_doc.total_invoices,
@@ -196,15 +199,23 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 	expected = (trip_doc.vehicle or "").strip().upper()
 	is_match = vehicle_entered == expected
 
+	# Determine the vehicle's current status
+	vehicle_status = frappe.db.get_value("Vehicle", trip_doc.vehicle, "status") or ""
+
 	log = frappe.new_doc("Gate Entry Log")
 	log.trip = trip_doc.name
 	log.scan_type = scan_type
 	log.vehicle_expected = expected
 	log.vehicle_entered = vehicle_entered
+	log.vehicle_status = vehicle_status
 	log.match_status = "Match" if is_match else "Mismatch"
 	log.scanned_by = frappe.session.user
 	log.scan_time = now_datetime()
 	log.insert(ignore_permissions=True)
+
+	# Auto-submit so the record shows as Submitted (no Save button)
+	frappe.flags.ignore_permissions = True
+	log.submit()
 
 	if scan_type == "Gate Out":
 		trip_doc.db_set("gate_out_time", log.scan_time)

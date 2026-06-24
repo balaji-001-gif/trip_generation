@@ -350,6 +350,21 @@ function fetch_and_display_trip_invoices(frm) {
 				frm.set_value("vehicle_expected", trip.vehicle);
 			}
 
+			// Fetch and display vehicle's current status
+			frappe.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "Vehicle",
+					filters: { name: trip.vehicle },
+					fieldname: "status",
+				},
+				callback(veh) {
+					if (veh.message && veh.message.status) {
+						frm.set_value("vehicle_status", veh.message.status);
+					}
+				},
+			});
+
 			display_trip_invoices(frm, {
 				name: trip.name,
 				vehicle: trip.vehicle,
