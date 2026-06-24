@@ -13,7 +13,8 @@ required_apps = ["erpnext"]
 
 # Adds the "Add to Trip" button to submitted Sales Invoices (form view).
 doctype_js = {
-	"Sales Invoice": "public/js/sales_invoice.js"
+	"Sales Invoice": "public/js/sales_invoice.js",
+	"Gate Entry Log": "public/js/gate_entry_log.js"
 }
 
 # Adds a bulk "Add to Trip" action to the Sales Invoice list view.
