@@ -234,4 +234,5 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 		"expected": expected,
 		"entered": vehicle_entered,
 		"status": trip_doc.status,
+		"gate_entry_log_name": log.name,
 	}
