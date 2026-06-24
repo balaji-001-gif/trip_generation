@@ -246,16 +246,11 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 
 		log = frappe.get_doc("Gate Entry Log", log_name)
 		log.gate_in_datetime = now
-		log.vehicle_entered = vehicle_entered
+		# Don't overwrite vehicle_entered — preserve the Gate Out entry
 		log.match_status = "Match" if is_match else "Mismatch"
 		log.scanned_by = frappe.session.user
 		log.vehicle_status = frappe.db.get_value("Vehicle", trip_doc.vehicle, "status") or ""
-		log.trip_status = trip_doc.status
 		log.save(ignore_permissions=True)
-
-		# Submit the log now that both scans are recorded
-		frappe.flags.ignore_permissions = True
-		log.submit()
 
 		trip_doc.db_set("gate_in_time", now)
 		trip_doc.db_set("gate_in_by", frappe.session.user)
@@ -264,6 +259,13 @@ def record_gate_scan(trip, code, scan_type, vehicle_entered):
 			frappe.db.set_value("Vehicle", trip_doc.vehicle, "status", "Available")
 		else:
 			trip_doc.db_set("status", "Flagged")
+
+		# Update trip_status AFTER the trip status changes
+		log.db_set("trip_status", trip_doc.status)
+
+		# Submit the log now that both scans are recorded
+		frappe.flags.ignore_permissions = True
+		log.submit()
 
 		return {
 			"match": is_match,
