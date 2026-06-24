@@ -1,0 +1,380 @@
+<style>
+	@page {
+		size: A4 portrait;
+		margin: 12mm 15mm 18mm 15mm;
+	}
+
+	body {
+		font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+		font-size: 10pt;
+		line-height: 1.5;
+		color: #1a1a1a;
+		margin: 0;
+		padding: 0;
+	}
+
+	/* ---- Header ---- */
+	.header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		border-bottom: 3px solid #1d4ed8;
+		padding-bottom: 10px;
+		margin-bottom: 14px;
+	}
+	.header-left h1 {
+		font-size: 20pt;
+		font-weight: 700;
+		margin: 0 0 2px 0;
+		color: #1d4ed8;
+	}
+	.header-left .company {
+		font-size: 11pt;
+		color: #555;
+	}
+	.header-right {
+		text-align: right;
+		font-size: 9pt;
+		color: #666;
+	}
+	.header-right .doc-name {
+		font-size: 14pt;
+		font-weight: 600;
+		color: #1a1a1a;
+	}
+
+	/* ---- Section titles ---- */
+	.section-title {
+		font-size: 9pt;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: #1d4ed8;
+		border-bottom: 1px solid #d1d5db;
+		padding-bottom: 3px;
+		margin: 14px 0 8px 0;
+	}
+
+	/* ---- Info grid ---- */
+	.info-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr 1fr;
+		gap: 6px 16px;
+		margin-bottom: 6px;
+	}
+	.info-item {
+		display: flex;
+		flex-direction: column;
+	}
+	.info-item .label {
+		font-size: 7.5pt;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: #888;
+	}
+	.info-item .value {
+		font-size: 11pt;
+		font-weight: 500;
+		color: #1a1a1a;
+		padding: 2px 0;
+	}
+	.info-item .value.highlight {
+		color: #1d4ed8;
+		font-weight: 700;
+	}
+
+	/* ---- Status badge ---- */
+	.status-badge {
+		display: inline-block;
+		padding: 2px 10px;
+		border-radius: 12px;
+		font-size: 9pt;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+	.status-badge.dispatched { background: #dbeafe; color: #1d4ed8; }
+	.status-badge.in-transit { background: #fef3c7; color: #b45309; }
+	.status-badge.completed { background: #d1fae5; color: #047857; }
+	.status-badge.flagged  { background: #fee2e2; color: #b91c1c; }
+	.status-badge.cancelled { background: #f3f4f6; color: #6b7280; }
+	.status-badge.draft    { background: #f3f4f6; color: #6b7280; }
+
+	/* ---- QR + Gate section ---- */
+	.qr-gate-row {
+		display: flex;
+		gap: 20px;
+		align-items: flex-start;
+		margin: 6px 0;
+	}
+	.qr-box {
+		flex: 0 0 140px;
+		text-align: center;
+		padding: 8px;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		background: #fff;
+	}
+	.qr-box img {
+		width: 120px;
+		height: 120px;
+		display: block;
+		margin: 0 auto;
+	}
+	.qr-box .qr-label {
+		font-size: 7pt;
+		color: #999;
+		margin-top: 4px;
+	}
+
+	/* ---- Gate sign-off boxes ---- */
+	.gate-boxes {
+		flex: 1;
+		display: flex;
+		gap: 12px;
+	}
+	.gate-box {
+		flex: 1;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		padding: 8px 10px;
+		min-height: 100px;
+	}
+	.gate-box .gate-title {
+		font-size: 8pt;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: #888;
+		margin-bottom: 4px;
+	}
+	.gate-box .gate-value {
+		font-size: 9pt;
+		color: #1a1a1a;
+	}
+	.gate-box .gate-stamp {
+		margin-top: 18px;
+		font-size: 8pt;
+		color: #aaa;
+		border-top: 1px dashed #d1d5db;
+		padding-top: 8px;
+	}
+
+	/* ---- Invoice table ---- */
+	table.invoice-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 9pt;
+		margin: 4px 0;
+	}
+	table.invoice-table th {
+		background: #f9fafb;
+		font-weight: 600;
+		font-size: 7.5pt;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: #666;
+		padding: 6px 8px;
+		border-bottom: 2px solid #e5e7eb;
+		text-align: left;
+	}
+	table.invoice-table td {
+		padding: 5px 8px;
+		border-bottom: 1px solid #f3f4f6;
+	}
+	table.invoice-table tr:last-child td {
+		border-bottom: none;
+	}
+	table.invoice-table .text-right {
+		text-align: right;
+	}
+	table.invoice-table .amount {
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+	table.invoice-table .total-row td {
+		border-top: 2px solid #1a1a1a;
+		font-weight: 700;
+		font-size: 10pt;
+		padding-top: 6px;
+		background: #f9fafb;
+	}
+
+	/* ---- Footer ---- */
+	.footer {
+		margin-top: 24px;
+		padding-top: 8px;
+		border-top: 1px solid #e5e7eb;
+		font-size: 7.5pt;
+		color: #999;
+		display: flex;
+		justify-content: space-between;
+	}
+
+	/* ---- Remarks ---- */
+	.remarks-box {
+		margin-top: 8px;
+		padding: 8px 10px;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		font-size: 9pt;
+		min-height: 24px;
+		background: #fafafa;
+	}
+
+	/* ---- Print helpers ---- */
+	@media print {
+		.no-print { display: none; }
+		body { font-size: 9pt; }
+		@page { margin: 10mm 12mm 14mm 12mm; }
+	}
+</style>
+
+{% set company_name = frappe.db.get_single_value("System Settings", "company_name") or frappe.db.get_value("Company", {"is_group": 0}, "company_name") or "" %}
+{% set default_currency = frappe.db.get_single_value("System Settings", "default_currency") or frappe.db.get_value("Company", {"is_group": 0}, "default_currency") or "INR" %}
+
+<div class="header">
+	<div class="header-left">
+		<h1>{{ _("Dispatch Slip") }}</h1>
+		<div class="company">{{ company_name }}</div>
+	</div>
+	<div class="header-right">
+		<div class="doc-name">{{ doc.name }}</div>
+		<div>{{ _("Printed") }}: {{ frappe.utils.now_datetime().strftime("%d-%b-%Y %H:%M") }}</div>
+		{% if doc.amended_from %}
+			<div style="color:#b91c1c;font-weight:600;margin-top:2px;">{{ _("Amendment") }}: {{ doc.amended_from }}</div>
+		{% endif %}
+	</div>
+</div>
+
+<div class="info-grid">
+	<div class="info-item">
+		<span class="label">{{ _("Trip Date") }}</span>
+		<span class="value">{{ frappe.utils.format_date(doc.trip_date) }}</span>
+	</div>
+	<div class="info-item">
+		<span class="label">{{ _("Vehicle") }}</span>
+		<span class="value highlight">{{ doc.vehicle or "-" }}</span>
+	</div>
+	<div class="info-item">
+		<span class="label">{{ _("Driver") }}</span>
+		<span class="value">{{ doc.driver or "-" }}</span>
+	</div>
+	<div class="info-item">
+		<span class="label">{{ _("Trip Type") }}</span>
+		<span class="value">{{ doc.trip_type or "Outward" }}</span>
+	</div>
+	<div class="info-item">
+		<span class="label">{{ _("Status") }}</span>
+		<span class="value">
+			<span class="status-badge {{ doc.status.lower().replace(' ', '-') if doc.status else 'draft' }}">
+				{{ doc.status or "Draft" }}
+			</span>
+		</span>
+	</div>
+	<div class="info-item">
+		<span class="label">{{ _("Trip Code") }}</span>
+		<span class="value" style="font-family:monospace;font-size:9pt;">{{ doc.trip_code or "-" }}</span>
+	</div>
+</div>
+
+<!-- QR + Gate Sign-off -->
+<div class="section-title">{{ _("Gate Scan & Sign-off") }}</div>
+
+<div class="qr-gate-row">
+	{% if doc.qr_code %}
+	<div class="qr-box">
+		<img src="{{ doc.qr_code }}" alt="QR Code">
+		<div class="qr-label">{{ _("Scan at gate") }}</div>
+	</div>
+	{% else %}
+	<div class="qr-box" style="background:#f9fafb;display:flex;align-items:center;justify-content:center;min-height:120px;">
+		<span style="font-size:8pt;color:#999;">{{ _("QR generated on submit") }}</span>
+	</div>
+	{% endif %}
+
+	<div class="gate-boxes">
+		<div class="gate-box">
+			<div class="gate-title">{{ _("Gate Out") }}</div>
+			{% if doc.gate_out_time %}
+				<div class="gate-value">{{ frappe.utils.format_datetime(doc.gate_out_time, "dd-MMM-yyyy HH:mm") }}</div>
+				<div class="gate-value" style="font-size:8pt;color:#666;">
+					{{ _("By") }}: {{ doc.gate_out_by or "-" }}
+				</div>
+			{% else %}
+				<div class="gate-value" style="color:#bbb;">{{ _("Not yet recorded") }}</div>
+			{% endif %}
+			<div class="gate-stamp">{{ _("Security stamp / signature") }}</div>
+		</div>
+		<div class="gate-box">
+			<div class="gate-title">{{ _("Gate In") }}</div>
+			{% if doc.gate_in_time %}
+				<div class="gate-value">{{ frappe.utils.format_datetime(doc.gate_in_time, "dd-MMM-yyyy HH:mm") }}</div>
+				<div class="gate-value" style="font-size:8pt;color:#666;">
+					{{ _("By") }}: {{ doc.gate_in_by or "-" }}
+				</div>
+			{% else %}
+				<div class="gate-value" style="color:#bbb;">
+					{% if doc.trip_type == "Returnable" %}
+						{{ _("Awaiting return scan") }}
+					{% else %}
+						{{ _("Not applicable (Outward)") }}
+					{% endif %}
+				</div>
+			{% endif %}
+			<div class="gate-stamp">{{ _("Security stamp / signature") }}</div>
+		</div>
+	</div>
+</div>
+
+<!-- Invoice Table -->
+<div class="section-title">{{ _("Invoices on this Vehicle") }}</div>
+
+<table class="invoice-table">
+	<thead>
+		<tr>
+			<th style="width:4%;">#</th>
+			<th style="width:22%;">{{ _("Sales Invoice") }}</th>
+			<th style="width:24%;">{{ _("Customer") }}</th>
+			<th style="width:14%;">{{ _("Posting Date") }}</th>
+			<th style="width:18%;" class="text-right">{{ _("Delivery Note") }}</th>
+			<th style="width:18%;" class="text-right">{{ _("Amount") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for inv in doc.invoices %}
+		<tr>
+			<td>{{ loop.index }}</td>
+			<td><strong>{{ inv.sales_invoice }}</strong></td>
+			<td>{{ inv.customer or "-" }}</td>
+			<td>{{ frappe.utils.format_date(inv.posting_date) if inv.posting_date else "-" }}</td>
+			<td class="text-right">{{ inv.delivery_note or "-" }}</td>
+			<td class="text-right amount">{{ frappe.utils.fmt_money(inv.grand_total, currency=default_currency) }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+	<tfoot>
+		<tr class="total-row">
+			<td colspan="4">
+				{{ _("Total") }}: <strong>{{ doc.total_invoices or doc.invoices|length }} {{ _("invoice(s)") }}</strong>
+			</td>
+			<td class="text-right">{{ _("Total Amount") }}:</td>
+			<td class="text-right amount">
+				{{ frappe.utils.fmt_money(doc.total_amount, currency=default_currency) }}
+			</td>
+		</tr>
+	</tfoot>
+</table>
+
+<!-- Remarks -->
+{% if doc.remarks %}
+<div class="section-title">{{ _("Remarks") }}</div>
+<div class="remarks-box">{{ doc.remarks }}</div>
+{% endif %}
+
+<!-- Footer -->
+<div class="footer">
+	<span>{{ _("Trip Dispatch Slip") }} — {{ doc.name }}</span>
+	<span>{{ _("Page") }} 1 / 1</span>
+</div>

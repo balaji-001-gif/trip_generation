@@ -1,0 +1,8 @@
+{
+ "doctype": "Print Format",
+ "name": "Trip Dispatch Slip",
+ "standard": "Yes",
+ "print_format_type": "Jinja",
+ "doc_type": "Trip",
+ "css": ""
+}
