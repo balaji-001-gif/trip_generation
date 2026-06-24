@@ -104,6 +104,7 @@
    "read_only": 1
   }
  ],
+ "is_submittable": 1,
  "index_web_views": 0,
  "links": [],
  "modified": "2026-06-24 00:00:00.000000",
@@ -123,7 +124,10 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "write": 1
+   "submit": 1,
+   "write": 1,
+   "cancel": 1,
+   "amend": 1
   },
   {
    "create": 1,
